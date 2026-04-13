@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Applet orbite d'astéroïde</title>
+  <style>
+    :root{
+      --bg:#f8fafc;
+      --panel:#ffffff;
+      --line:#cbd5e1;
+      --text:#0f172a;
+      --muted:#475569;
+      --blue:#2563eb;
+      --orange:#f59e0b;
+      --green:#16a34a;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{
+      max-width:1200px;
+      margin:0 auto;
+      padding:24px;
+    }
+    h1{
+      font-size:28px;
+      margin:0 0 8px 0;
+    }
+    p.top{
+      margin:0 0 18px 0;
+      color:var(--muted);
+      line-height:1.5;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:20px;
+    }
+    .card{
+      background:var(--panel);
+      border:1px solid #e2e8f0;
+      border-radius:18px;
+      padding:14px;
+      box-shadow:0 1px 3px rgba(0,0,0,.05);
+    }
+    .row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .title{
+      font-size:18px;
+      font-weight:600;
+    }
+    .small{
+      font-size:14px;
+      color:var(--muted);
+    }
+    svg{
+      width:100%;
+      height:auto;
+      display:block;
+      background:#f8fafc;
+      border-radius:14px;
+      touch-action:none;
+      user-select:none;
+    }
+    .controls{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:12px;
+      margin-top:18px;
+    }
+    .control{
+      background:var(--panel);
+      border:1px solid #e2e8f0;
+      border-radius:14px;
+      padding:12px;
+    }
+    label{
+      display:block;
+      font-size:14px;
+      color:var(--muted);
+      margin-bottom:6px;
+    }
+    input[type="range"], select{
+      width:100%;
+    }
+    select{
+      padding:8px;
+      border:1px solid #cbd5e1;
+      border-radius:8px;
+      background:white;
+    }
+    .footer{
+      margin-top:18px;
+      background:var(--panel);
+      border:1px solid #e2e8f0;
+      border-radius:18px;
+      padding:14px;
+      color:var(--muted);
+      line-height:1.55;
+    }
+    .badge{
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      background:#eff6ff;
+      color:#1d4ed8;
+      font-size:12px;
+      font-weight:600;
+    }
+    .muted-box{
+      opacity:0.55;
+    }
+    @media (max-width: 900px){
+      .grid{grid-template-columns:1fr}
+      .controls{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Applet interactive : diagramme (a, e) et orbite d'un astéroïde</h1>
+    <p class="top">
+      Cette application fonctionne hors ligne dans un navigateur sur <strong>macOS</strong>, <strong>Windows</strong> et <strong>Linux</strong>. <br> Pour aider à apprivoiser le diagramme demi-grand axe - excentricité (explications en bas)
+      
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <div class="row">
+          <div class="title">Diagramme [a,e] : demi-grand axe, excentricité</div>
+          <div class="small"><span class="badge" id="mode-badge">Mode Q constant</span></div>
+        </div>
+        <svg id="diagramSvg" viewBox="0 0 460 460"></svg>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div class="title">Espace réel</div>
+          <div class="small" id="readout-left"></div>
+        </div>
+        <svg id="orbitSvg" viewBox="0 0 460 460"></svg>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control">
+        <label for="mode">Mode</label>
+        <select id="mode">
+          <option value="Q">Q = constant</option>
+          <option value="q">q = constant</option>
+          <option value="free">Libre</option>
+        </select>
+      </div>
+
+      <div class="control" id="constControl">
+        <label for="constSlider" id="constLabel">Valeur de Q : 2.06 AU</label>
+        <input id="constSlider" type="range" min="1.00" max="3.50" step="0.01" value="2.06" />
+      </div>
+
+      <div class="control" id="freeAControl">
+        <label for="freeASlider">Mode libre : a = <span id="freeAValue">2,04</span> AU</label>
+        <input id="freeASlider" type="range" min="0.00" max="3.50" step="0.01" value="2.04" />
+      </div>
+
+      <div class="control" id="freeEControl">
+        <label for="freeESlider">Mode libre : e = <span id="freeEValue">0,01</span></label>
+        <input id="freeESlider" type="range" min="0.00" max="0.99" step="0.01" value="0.01" />
+      </div>
+
+      <div class="control">
+        <label for="showEarth">Affichage</label>
+        <div><input id="showEarth" type="checkbox" checked /> <span class="small">Orbites de la Terre et frontière q = 1 / Q = 1</span></div>
+        <div><input id="showZones" type="checkbox" checked /> <span class="small">Zone de croisement terrestre</span></div>
+      </div>
+
+      <div class="control">
+        <label>Valeurs courantes</label>
+        <div class="small" id="readout-right"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      En mode <strong>Q constant</strong>, la poignée est contrainte sur la courbe
+      <strong>Q = a(1+e)</strong>. En mode <strong>q constant</strong>, elle suit
+      <strong>q = a(1-e)</strong>. En mode <strong>libre</strong>, la poignée se déplace partout dans le diagramme.
+      Le tracé de gauche montre l'orbite correspondante dans le plan réel, le Soleil (dont l'orbite est approximée par un cercel de rayon 1 ua) étant placé dans l'un des foyers.
+      Les courbes orange et verte représentent respectivement <strong>q = 1</strong> et <strong>Q = 1</strong>. <br>
+      <strong>Mode d'emploi : </strong> <br> Déplacer la poignée (le gros point bleu) sur le diagramme <strong>(a, e)</strong> pour faire varier l'orbite d'un astéroïde (bleu foncé). On voit l'orbite terrestre en orange. La zone en bleu clair sur le diagramme indique que l'orbite de l'astéroïde croise l'orbite terrestre.<br>
+      Il y a trois modes de fonctionnenment que l'on choisit dans le menu déroulant : <br>
+      Deux modes qui permettent de contraindre soit l'aphélie "Q" soit le périhélie "q" de l'astéroïde. Dans ce cas il y a un curseur pour choisir la valeur de la contrainte et l'on peut voir comment cela partitionne le plan [a,e]. <br>
+      Et un mode "libre" (mon préféré) dans lequel on peut déplacer en l'attrapant avec la souris le gros point bleu qui décrit les paramètres de l'astéroïde. <br> Amusez vous bien... <br>©Jean-Pierre Pic and AI - 12 avril 2026 - Remarques : jppic(at)mac.com
+    </div>
+  </div>
+
+  <script>
+    const orbitSvg = document.getElementById('orbitSvg');
+    const diagramSvg = document.getElementById('diagramSvg');
+    const readoutLeft = document.getElementById('readout-left');
+    const readoutRight = document.getElementById('readout-right');
+    const modeSel = document.getElementById('mode');
+    const constSlider = document.getElementById('constSlider');
+    const constLabel = document.getElementById('constLabel');
+    const modeBadge = document.getElementById('mode-badge');
+    const showEarth = document.getElementById('showEarth');
+    const showZones = document.getElementById('showZones');
+    const freeASlider = document.getElementById('freeASlider');
+    const freeESlider = document.getElementById('freeESlider');
+    const freeAValue = document.getElementById('freeAValue');
+    const freeEValue = document.getElementById('freeEValue');
+    const constControl = document.getElementById('constControl');
+    const freeAControl = document.getElementById('freeAControl');
+    const freeEControl = document.getElementById('freeEControl');
+
+    const state = {
+      mode: 'Q',
+      constant: 2.06,
+      a: 2.04,
+      e: 0.01,
+      dragging: false
+    };
+
+    const plot = { w:460, h:460, pad:40 };
+    const world = { w:460, h:460, pad:22, minX:-2.4, maxX:2.4, minY:-2.4, maxY:2.4 };
+
+    function clamp(x, lo, hi){ return Math.max(lo, Math.min(hi, x)); }
+    function fmt(x){ return Number(x).toFixed(2).replace('.', ','); }
+
+    function xScale(a){ return plot.pad + (a-0)/(3.5-0)*(plot.w-2*plot.pad); }
+    function yScale(e){ return plot.h-plot.pad - (e-0)/(1-0)*(plot.h-2*plot.pad); }
+    function aFromX(x){ return 0 + (x-plot.pad)/(plot.w-2*plot.pad)*(3.5-0); }
+    function eFromY(y){ return clamp((plot.h - plot.pad - y)/(plot.h-2*plot.pad), 0, 1); }
+
+    function ox(x){ return world.pad + (x-world.minX)/(world.maxX-world.minX)*(world.w-2*world.pad); }
+    function oy(y){ return world.h-world.pad - (y-world.minY)/(world.maxY-world.minY)*(world.h-2*world.pad); }
+
+    function curveQ(a, Q){ return Q/a - 1; }
+    function curveq(a, q){ return 1 - q/a; }
+    function qFromAE(a,e){ return a*(1-e); }
+    function QFromAE(a,e){ return a*(1+e); }
+
+    function validARange(){
+      if(state.mode === 'Q'){
+        const Q = state.constant;
+        const amin = Math.max(0, Q/2);
+        const amax = Math.min(3.5, Q);
+        return [amin, amax];
+      } else if(state.mode === 'q'){
+        const q = state.constant;
+        const amin = Math.max(0, q);
+        const amax = 3.5;
+        return [amin, amax];
+      } else {
+        return [0, 3.5];
+      }
+    }
+
+    function setPointFromA(a){
+      const [amin, amax] = validARange();
+      a = clamp(a, amin, amax);
+      let e;
+      if(state.mode === 'Q') e = curveQ(a, state.constant);
+      else if(state.mode === 'q') e = curveq(a, state.constant);
+      else e = state.e;
+      state.a = a;
+      state.e = clamp(e, 0, 0.99);
+      syncFreeSliders();
+      render();
+    }
+
+    function setPointFree(a, e){
+      state.a = clamp(a, 0, 3.5);
+      state.e = clamp(e, 0, 0.99);
+      syncFreeSliders();
+      render();
+    }
+
+    function syncFreeSliders(){
+      freeASlider.value = state.a.toFixed(2);
+      freeESlider.value = state.e.toFixed(2);
+      freeAValue.textContent = fmt(state.a);
+      freeEValue.textContent = fmt(state.e);
+    }
+
+    function polylinePoints(points){
+      return points.map(p => p.join(',')).join(' ');
+    }
+
+    function make(tag, attrs = {}){
+      const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+      return el;
+    }
+
+    function clearSvg(svg){
+      while(svg.firstChild) svg.removeChild(svg.firstChild);
+    }
+
+    function drawGrid(svg, xs, ys, xFn, yFn, w, h, pad){
+      ys.forEach(g => svg.appendChild(make('line', {x1:pad, y1:yFn(g), x2:w-pad, y2:yFn(g), stroke:'#cbd5e1', 'stroke-width':1})));
+      xs.forEach(g => svg.appendChild(make('line', {x1:xFn(g), y1:pad, x2:xFn(g), y2:h-pad, stroke:'#cbd5e1', 'stroke-width':1})));
+    }
+
+    function renderOrbit(){
+      clearSvg(orbitSvg);
+      const orbitTicks = [-2,-1,0,1,2];
+      drawGrid(orbitSvg, orbitTicks, orbitTicks, ox, oy, world.w, world.h, world.pad);
+
+      orbitSvg.appendChild(make('line', {
+        x1:ox(world.minX), y1:oy(0), x2:ox(world.maxX), y2:oy(0),
+        stroke:'#0f172a', 'stroke-width':1.2
+      }));
+      orbitSvg.appendChild(make('line', {
+        x1:ox(0), y1:oy(world.minY), x2:ox(0), y2:oy(world.maxY),
+        stroke:'#0f172a', 'stroke-width':1.2
+      }));
+
+      orbitTicks.forEach(v => {
+        const tx = make('text', {
+          x:ox(v),
+          y:oy(0)+16,
+          fill:'#475569',
+          'font-size':11,
+          'text-anchor':'middle'
+        });
+        tx.textContent = String(v);
+        orbitSvg.appendChild(tx);
+
+        if(v !== 0){
+          const ty = make('text', {
+            x:ox(0)-8,
+            y:oy(v)+4,
+            fill:'#475569',
+            'font-size':11,
+            'text-anchor':'end'
+          });
+          ty.textContent = String(v);
+          orbitSvg.appendChild(ty);
+        }
+      });
+
+      const lx = make('text', {x:ox(world.maxX)-8, y:oy(0)-8, fill:'#334155', 'font-size':12, 'text-anchor':'end'});
+      lx.textContent = 'x (AU)';
+      orbitSvg.appendChild(lx);
+      const ly = make('text', {x:ox(0)+8, y:oy(world.maxY)+14, fill:'#334155', 'font-size':12});
+      ly.textContent = 'y (AU)';
+      orbitSvg.appendChild(ly);
+
+      if(showEarth.checked){
+        const earth = [];
+        for(let i=0;i<=360;i++){
+          const t = 2*Math.PI*i/360;
+          earth.push([ox(Math.cos(t)), oy(Math.sin(t))]);
+        }
+        orbitSvg.appendChild(make('polyline', {
+          points: polylinePoints(earth),
+          fill:'none', stroke:'#f59e0b', 'stroke-width':2.5
+        }));
+      }
+
+      const orbit = [];
+      const a = state.a, e = state.e;
+      for(let i=0;i<=900;i++){
+        const t = 2*Math.PI*i/900;
+        const r = a*(1-e*e)/(1+e*Math.cos(t));
+        orbit.push([ox(r*Math.cos(t)), oy(r*Math.sin(t))]);
+      }
+      orbitSvg.appendChild(make('polyline', {
+        points: polylinePoints(orbit),
+        fill:'none', stroke:'#2563eb', 'stroke-width':2.5
+      }));
+
+      orbitSvg.appendChild(make('circle', {cx:ox(0), cy:oy(0), r:5, fill:'#0f172a'}));
+orbitSvg.appendChild(make('rect', {
+        x:world.w-160, y:16, width:140, height:50, rx:8,
+        fill:'white', stroke:'#cbd5e1'
+      }));
+      orbitSvg.appendChild(make('line',{x1:world.w-150,y1:32,x2:world.w-120,y2:32,stroke:'#2563eb','stroke-width':2.5}));
+      orbitSvg.appendChild(make('line',{x1:world.w-150,y1:48,x2:world.w-120,y2:48,stroke:'#f59e0b','stroke-width':2.5}));
+      const t1=make('text',{x:world.w-115,y:36,'font-size':11,fill:'#334155'}); t1.textContent='Astéroïde'; orbitSvg.appendChild(t1);
+      const t2=make('text',{x:world.w-115,y:52,'font-size':11,fill:'#334155'}); t2.textContent='Terre'; orbitSvg.appendChild(t2);
+
+
+      const textSun = make('text', {x:ox(0)+8, y:oy(0)-8, fill:'#334155', 'font-size':12});
+      textSun.textContent = 'Soleil';
+      orbitSvg.appendChild(textSun);
+
+      if(showEarth.checked){
+        const textEarth = make('text', {x:ox(02), y:oy(05), fill:'#b45309', 'font-size':12});
+        textEarth.textContent = 'Terre'; textEarth.setAttribute('font-weight','bold'); textEarth.setAttribute('font-size','14');
+        orbitSvg.appendChild(textEarth);
+      }
+
+      readoutLeft.textContent = `a = ${fmt(state.a)} AU · e = ${fmt(state.e)} · q = ${fmt(qFromAE(state.a, state.e))} AU · Q = ${fmt(QFromAE(state.a, state.e))} AU`;
+    }
+
+    function renderDiagram(){
+      clearSvg(diagramSvg);
+      const xTicks = [0,0.5,1,1.5,2,2.5,3,3.5];
+      const yTicks = [0,0.2,0.4,0.6,0.8,1];
+      drawGrid(
+        diagramSvg,
+        xTicks,
+        yTicks,
+        xScale, yScale, plot.w, plot.h, plot.pad
+      );
+
+      if(showZones.checked && showEarth.checked){
+        // Zone de croisement terrestre complète :
+        // - pour a < 1 : croisement si Q = a(1+e) > 1  => e > 1/a - 1
+        // - pour a >= 1 : croisement si q = a(1-e) < 1 => e > 1 - 1/a
+        const crossPts = [];
+        for(let i=0;i<=700;i++){
+          const a = 0 + (3.5-0)*i/700;
+          let eBoundary;
+          if(a < 1){
+            eBoundary = curveQ(a, 1);
+          } else {
+            eBoundary = curveq(a, 1);
+          }
+          eBoundary = clamp(eBoundary, 0, 1);
+          crossPts.push([xScale(a), yScale(eBoundary)]);
+        }
+        const poly = [[xScale(0), yScale(1)], ...crossPts, [xScale(3.5), yScale(1)]];
+        diagramSvg.appendChild(make('polygon', {
+          points: polylinePoints(poly),
+          fill:'#2563eb22'
+        }));
+      }
+
+      if(showEarth.checked){
+        const q1 = [];
+        for(let i=0;i<=400;i++){
+          const a = 1 + (3.5-1)*i/400;
+          const e = curveq(a,1);
+          if(e>=0 && e<=1) q1.push([xScale(a), yScale(e)]);
+        }
+        diagramSvg.appendChild(make('polyline', {
+          points: polylinePoints(q1),
+          fill:'none', stroke:'#f59e0b', 'stroke-width':2.5
+        }));
+
+        const Q1 = [];
+        for(let i=0;i<=400;i++){
+          const a = 0 + (1.0-0)*i/400;
+          const e = curveQ(a,1);
+          if(e>=0 && e<=1) Q1.push([xScale(a), yScale(e)]);
+        }
+        diagramSvg.appendChild(make('polyline', {
+          points: polylinePoints(Q1),
+          fill:'none', stroke:'#16a34a', 'stroke-width':2.5
+        }));
+
+        const tq = make('text', {x:xScale(2.7), y:yScale(curveq(2.7,1))-10, fill:'#b45309', 'font-size':12});
+        tq.textContent = 'q = 1';
+        diagramSvg.appendChild(tq);
+
+        const tQ = make('text', {x:xScale(0.83), y:yScale(curveQ(0.83,1))+16, fill:'#15803d', 'font-size':12});
+        tQ.textContent = 'Q = 1';
+        diagramSvg.appendChild(tQ);
+      }
+
+      if(state.mode !== 'free'){
+        const curve = [];
+        const [amin, amax] = validARange();
+        for(let i=0;i<=400;i++){
+          const a = amin + (amax-amin)*i/400;
+          const e = state.mode === 'Q' ? curveQ(a, state.constant) : curveq(a, state.constant);
+          if(e>=0 && e<=1) curve.push([xScale(a), yScale(e)]);
+        }
+        diagramSvg.appendChild(make('polyline', {
+          points: polylinePoints(curve),
+          fill:'none', stroke:'#2563eb', 'stroke-width':3
+        }));
+
+        const labelA = Math.max(0.85, Math.min(2.35, amin + 0.3));
+        const labelE = state.mode === 'Q' ? curveQ(labelA, state.constant) : curveq(Math.max(labelA, amin), state.constant);
+        if(labelE >= 0 && labelE <= 1){
+          const tc = make('text', {x:xScale(Math.max(labelA, amin)), y:yScale(labelE)-10, fill:'#1d4ed8', 'font-size':12});
+          tc.textContent = `${state.mode} = ${fmt(state.constant)}`;
+          diagramSvg.appendChild(tc);
+        }
+      }
+
+      diagramSvg.appendChild(make('circle', {
+        cx:xScale(state.a), cy:yScale(state.e), r:8, fill:'#2563eb', stroke:'white', 'stroke-width':3
+      }));
+
+      diagramSvg.appendChild(make('line', {x1:plot.pad, y1:plot.h-plot.pad, x2:plot.w-plot.pad, y2:plot.h-plot.pad, stroke:'#0f172a', 'stroke-width':1.5}));
+      diagramSvg.appendChild(make('line', {x1:plot.pad, y1:plot.pad, x2:plot.pad, y2:plot.h-plot.pad, stroke:'#0f172a', 'stroke-width':1.5}));
+
+      const internalTitle = make('text', {
+        x:plot.w/2, y:22, fill:'#0f172a', 'font-size':13, 'font-weight':'bold', 'text-anchor':'middle'
+      });
+      internalTitle.textContent = 'Diagramme [a,e] : demi-grand axe, excentricité';
+      diagramSvg.appendChild(internalTitle);
+
+      const legendBox = make('rect', {
+        x:plot.w-180, y:46, width:140, height:62, rx:8,
+        fill:'white', stroke:'#cbd5e1', 'stroke-width':1
+      });
+      diagramSvg.appendChild(legendBox);
+
+      const leg1 = make('line', {x1:plot.w-168, y1:52, x2:plot.w-140, y2:52, stroke:'#2563eb', 'stroke-width':3});
+      const leg2 = make('line', {x1:plot.w-168, y1:70, x2:plot.w-140, y2:70, stroke:'#f59e0b', 'stroke-width':2.5});
+      const leg3 = make('line', {x1:plot.w-168, y1:88, x2:plot.w-140, y2:88, stroke:'#16a34a', 'stroke-width':2.5});
+      diagramSvg.appendChild(leg1);
+      diagramSvg.appendChild(leg2);
+      diagramSvg.appendChild(leg3);
+
+      const legText1 = make('text', {x:plot.w-132, y:56, fill:'#334155', 'font-size':11});
+      legText1.textContent = state.mode === 'free' ? 'orbite choisie' : 'courbe active';
+      diagramSvg.appendChild(legText1);
+
+      const legText2 = make('text', {x:plot.w-132, y:74, fill:'#334155', 'font-size':11});
+      legText2.textContent = 'q = 1';
+      diagramSvg.appendChild(legText2);
+
+      const legText3 = make('text', {x:plot.w-132, y:92, fill:'#334155', 'font-size':11});
+      legText3.textContent = 'Q = 1';
+      diagramSvg.appendChild(legText3);
+
+      const ta = make('text', {x:plot.w/2-18, y:plot.h-8, fill:'#334155', 'font-size':12});
+      ta.textContent = 'a (AU)';
+      diagramSvg.appendChild(ta);
+
+      const te = make('text', {x:10, y:20, fill:'#334155', 'font-size':12});
+      te.textContent = 'e';
+      diagramSvg.appendChild(te);
+
+      xTicks.forEach(v => {
+        const t = make('text', {
+          x:xScale(v),
+          y:plot.h-plot.pad+16,
+          fill:'#475569',
+          'font-size':11,
+          'text-anchor':'middle'
+        });
+        t.textContent = String(v).replace('.', ',');
+        diagramSvg.appendChild(t);
+      });
+
+      yTicks.forEach(v => {
+        const t = make('text', {
+          x:plot.pad-10,
+          y:yScale(v)+4,
+          fill:'#475569',
+          'font-size':11,
+          'text-anchor':'end'
+        });
+        t.textContent = String(v).replace('.', ',');
+        diagramSvg.appendChild(t);
+      });
+
+      readoutRight.innerHTML =
+        `mode = ${state.mode === 'free' ? 'libre' : state.mode + ' constant'}<br>` +
+        `${state.mode === 'free' ? '' : state.mode + ' = ' + fmt(state.constant) + ' AU<br>'}` +
+        `a = ${fmt(state.a)} AU<br>` +
+        `e = ${fmt(state.e)}<br>` +
+        `q = ${fmt(qFromAE(state.a, state.e))} AU<br>` +
+        `Q = ${fmt(QFromAE(state.a, state.e))} AU`;
+    }
+
+    function render(){
+      modeBadge.textContent =
+        state.mode === 'Q' ? 'Mode Q constant' :
+        state.mode === 'q' ? 'Mode q constant' :
+        'Mode libre';
+
+      constLabel.textContent = `Valeur de ${state.mode === 'Q' ? 'Q' : 'q'} : ${fmt(state.constant)} AU`;
+
+      constSlider.disabled = state.mode === 'free';
+      constControl.classList.toggle('muted-box', state.mode === 'free');
+      freeAControl.classList.toggle('muted-box', state.mode !== 'free');
+      freeEControl.classList.toggle('muted-box', state.mode !== 'free');
+
+      renderOrbit();
+      renderDiagram();
+    }
+
+    function updateSliderBounds(){
+      if(state.mode === 'Q'){
+        constSlider.min = '1.00';
+        constSlider.max = '3.50';
+        state.constant = clamp(state.constant, 1.0, 3.5);
+      } else {
+        constSlider.min = '00';
+        constSlider.max = '3.50';
+        state.constant = clamp(state.constant, 0, 3.5);
+      }
+      constSlider.value = state.constant.toFixed(2);
+    }
+
+    function handlePointer(clientX, clientY){
+      const rect = diagramSvg.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+
+      if(state.mode === 'free'){
+        const a = clamp(aFromX(x), 0, 3.5);
+        const e = eFromY(y);
+        setPointFree(a, e);
+      } else {
+        const [amin, amax] = validARange();
+        const a = clamp(aFromX(x), amin, amax);
+        setPointFromA(a);
+      }
+    }
+
+    diagramSvg.addEventListener('mousedown', (e) => {
+      state.dragging = true;
+      handlePointer(e.clientX, e.clientY);
+    });
+    window.addEventListener('mousemove', (e) => {
+      if(state.dragging) handlePointer(e.clientX, e.clientY);
+    });
+    window.addEventListener('mouseup', () => state.dragging = false);
+
+    diagramSvg.addEventListener('touchstart', (e) => {
+      state.dragging = true;
+      handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+      e.preventDefault();
+    }, {passive:false});
+    window.addEventListener('touchmove', (e) => {
+      if(state.dragging){
+        handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+        e.preventDefault();
+      }
+    }, {passive:false});
+    window.addEventListener('touchend', () => state.dragging = false);
+
+    modeSel.addEventListener('change', () => {
+      state.mode = modeSel.value;
+      updateSliderBounds();
+
+      if(state.mode === 'free'){
+        state.a = clamp(state.a, 0, 3.5);
+        state.e = clamp(state.e, 0, 0.99);
+      } else {
+        const [amin, amax] = validARange();
+        if(state.a < amin || state.a > amax) state.a = (amin + amax) / 2;
+        state.e = state.mode === 'Q' ? curveQ(state.a, state.constant) : curveq(state.a, state.constant);
+        state.e = clamp(state.e, 0, 0.99);
+      }
+
+      syncFreeSliders();
+      render();
+    });
+
+    constSlider.addEventListener('input', () => {
+      state.constant = parseFloat(constSlider.value);
+      const [amin, amax] = validARange();
+      if(state.a < amin || state.a > amax) state.a = (amin + amax) / 2;
+      state.e = state.mode === 'Q' ? curveQ(state.a, state.constant) : curveq(state.a, state.constant);
+      state.e = clamp(state.e, 0, 0.99);
+      syncFreeSliders();
+      render();
+    });
+
+    freeASlider.addEventListener('input', () => {
+      state.a = parseFloat(freeASlider.value);
+      freeAValue.textContent = fmt(state.a);
+      if(state.mode === 'free') render();
+    });
+
+    freeESlider.addEventListener('input', () => {
+      state.e = parseFloat(freeESlider.value);
+      freeEValue.textContent = fmt(state.e);
+      if(state.mode === 'free') render();
+    });
+
+    showEarth.addEventListener('change', render);
+    showZones.addEventListener('change', render);
+
+    updateSliderBounds();
+    syncFreeSliders();
+    render();
+  </script>
+</body>
+</html>
